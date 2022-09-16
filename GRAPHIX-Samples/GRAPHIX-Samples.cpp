@@ -31,6 +31,34 @@ int main(void)
     // Initialize GLAD - must always come AFTER glfwMakeContext
     gladLoadGL();
 
+    //All of these are conversions for vert
+    std::fstream vertSrc("Shaders/sample.vert");
+    std::stringstream vertBuff;
+    vertBuff << vertSrc.rdbuf();
+    std::string vertString = vertBuff.str();
+    const char* v = vertString.c_str();
+
+    //All of these are conversions for frag
+    std::fstream fragSrc("Shaders/sample.frag");
+    std::stringstream fragBuff;
+    fragBuff << fragSrc.rdbuf();
+    std::string fragString = fragBuff.str();
+    const char* f = fragString.c_str();
+
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &v, NULL);
+    glCompileShader(vertexShader);
+
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &f, NULL);
+    glCompileShader(fragmentShader);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+
+    glLinkProgram(shaderProgram);
+
     std::string path = "3D/bunny.obj";
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
@@ -77,6 +105,8 @@ int main(void)
     // Generate and assign ID to EBO
     glGenBuffers(1, &EBO);
     
+    glUseProgram(shaderProgram);
+
     // Assigns or binds VAO - any calls after this will automatically point to VAO; Tells OpenGL we're working with that specified VAO
     glBindVertexArray(VAO);
     // Converts VBO to an array buffer that stores our vertex position; Tells OpenGL we're working with this VBO
@@ -85,7 +115,8 @@ int main(void)
     glBufferData(
         GL_ARRAY_BUFFER, // What data is in the buffer
         //sizeof(vertices), // Size of the whole buffer in bytes
-        sizeof(attributes.vertices) * attributes.vertices.size(), // alternative; sizeof(GL_FLOAT) * attributes.vertices.size()
+        //sizeof(attributes.vertices) * attributes.vertices.size(), // alternative; sizeof(GL_FLOAT) * attributes.vertices.size()
+        sizeof(GL_FLOAT) * attributes.vertices.size(),
         //vertices, // Vertex Array        
         &attributes.vertices[0],
         GL_STATIC_DRAW //The position won't update therefore it's static
@@ -97,7 +128,8 @@ int main(void)
         3, // X, Y, Z
         GL_FLOAT, // Type of ARRAY
         GL_FALSE, // Should we normalize this?
-        3 * sizeof(float), // How big the 3 points are in bytes? Size of Vertex data ; alternative sizeof(GL_FLOAT)
+        //3 * sizeof(float), // How big the 3 points are in bytes? Size of Vertex data ; alternative sizeof(GL_FLOAT)
+        3 * sizeof(GL_FLOAT),
         (void*)0
     );
 
