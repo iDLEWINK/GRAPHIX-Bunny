@@ -158,11 +158,18 @@ int main(void)
     // We're done modifying - bind it to 0
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+    float mod_x = 0;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
+
+        mod_x += 0.001f;
+
+        unsigned int xLoc = glGetUniformLocation(shaderProgram, "x");
+        glUniform1f(xLoc, mod_x);
 
         /*
         * SIMPLE IMPLEMENTATION
