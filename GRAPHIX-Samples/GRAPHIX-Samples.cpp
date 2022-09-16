@@ -9,6 +9,24 @@
 #include <string>
 #include <iostream>
 
+float mod_x = 0;
+
+void Key_Callback(GLFWwindow* window,
+    int key, //KeyCode
+    int scanCode, //ScanCode
+    int action, // Press or Release
+    int mods // Modifier keys
+) 
+{
+    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
+        mod_x += 0.1f;
+    }
+
+    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
+        mod_x -= 0.1f;
+    }
+}
+
 int main(void)
 {
     GLFWwindow* window;
@@ -30,6 +48,8 @@ int main(void)
     /*The order MATTERS*/
     // Initialize GLAD - must always come AFTER glfwMakeContext
     gladLoadGL();
+
+    glfwSetKeyCallback(window, Key_Callback);
 
     //All of these are conversions for vert
     std::fstream vertSrc("Shaders/sample.vert");
@@ -158,7 +178,7 @@ int main(void)
     // We're done modifying - bind it to 0
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    float mod_x = 0;
+    // float mod_x = 0;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -166,7 +186,8 @@ int main(void)
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
 
-        mod_x += 0.001f;
+        //Controls if to the left or to the right
+        //mod_x += 0.001f;
 
         unsigned int xLoc = glGetUniformLocation(shaderProgram, "x");
         glUniform1f(xLoc, mod_x);
