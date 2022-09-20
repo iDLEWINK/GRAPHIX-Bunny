@@ -9,6 +9,11 @@
 #include <string>
 #include <iostream>
 
+// GLM Headers
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 float mod_x = 0;
 
 void Key_Callback(GLFWwindow* window,
@@ -178,6 +183,43 @@ int main(void)
     // We're done modifying - bind it to 0
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+    glm::mat4 identity_matrix = glm::mat4(1.0f); // 4x4 identity matrix
+
+    //***********************TRANSLATION
+    float x, y, z;
+    x = y = z = 0.0f;
+
+    /*
+    glm::mat4 translation = glm::translate(identity_matrix, 
+        glm::vec3(x, y, z)
+    );
+    */
+
+    //************************SCALE
+    float scale_x, scale_y, scale_z;
+    scale_x = scale_y = scale_z = 3.0f; // 1 is neither scaled up or shrunked
+
+    /*
+    glm::mat4 scale = glm::scale(identity_matrix,
+        glm::vec3(scale_x, scale_y, scale_z)
+    );
+    */
+
+    //*************************ROTATION
+    float rot_x, rot_y, rot_z;
+    rot_x = rot_y = rot_z = 0.0f; //But there should be at least 1 that's greater than 0. Not all should be 0.
+    rot_y = 1.0f;
+    float theta = 90.f; // Rotate the model by 90 degrees
+
+    /*
+    glm::mat4 rotation = glm::rotate(identity_matrix,
+        glm::radians(theta), // Convert from degrees to radians
+        //glm::vec3(rot_x, rot_y, rot_z) // Normalized Axis Vector
+        // Normalized Vector = Magnitude / Length = 1
+        glm::normalize(glm::vec3(rot_x, rot_y, rot_z)) // OPTIONAL: if you wanna make sure that it's normalized
+    );
+    */
+
     // float mod_x = 0;
 
     /* Loop until the user closes the window */
@@ -186,11 +228,33 @@ int main(void)
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
 
+        theta += mod_x;
+
+        glm::mat4 transformation_matrix = glm::mat4(1.0f); // Creates your base identity matrix
+
+        //Translation
+        transformation_matrix = glm::translate(transformation_matrix,
+            glm::vec3(x, y, z));
+
+        //Multiply resulting matrix with scale matrix
+        transformation_matrix = glm::scale(transformation_matrix,
+            glm::vec3(scale_x, scale_y, scale_z));
+
+        //Multiply it with rotation matrix
+        transformation_matrix = glm::rotate(transformation_matrix,
+            glm::radians(theta),
+            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
+        
+        unsigned int transformationLoc = glGetUniformLocation(shaderProgram, "transform"); // transform is the variable from sample.vert
+        glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
+
         //Controls if to the left or to the right
         //mod_x += 0.001f;
 
+        /*** REMOVE ANIMATION CODES FOR NOW
         unsigned int xLoc = glGetUniformLocation(shaderProgram, "x");
         glUniform1f(xLoc, mod_x);
+        */
 
         /*
         * SIMPLE IMPLEMENTATION
