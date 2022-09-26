@@ -15,6 +15,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 float mod_x = 0;
+float z_mod = -5.0f;
 
 void Key_Callback(GLFWwindow* window,
     int key, //KeyCode
@@ -30,6 +31,14 @@ void Key_Callback(GLFWwindow* window,
     if (key == GLFW_KEY_A && action == GLFW_PRESS) {
         mod_x -= 0.1f;
     }
+
+    if (key == GLFW_KEY_S && action == GLFW_REPEAT) {
+        z_mod -= 0.1f;
+    }
+
+    if (key == GLFW_KEY_W && action == GLFW_REPEAT) {
+        z_mod += 0.1f;
+    }
 }
 
 int main(void)
@@ -40,8 +49,11 @@ int main(void)
     if (!glfwInit())
         return -1;
 
+    float screenWidth = 640.f;
+    float screenHeight = 480.f;
+
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(screenWidth, screenHeight, "Hello World", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -53,6 +65,8 @@ int main(void)
     /*The order MATTERS*/
     // Initialize GLAD - must always come AFTER glfwMakeContext
     gladLoadGL();
+
+    //glViewport(0, 0, screenWidth, screenHeight);
 
     glfwSetKeyCallback(window, Key_Callback);
 
@@ -222,6 +236,19 @@ int main(void)
 
     // float mod_x = 0;
 
+    /*
+    glm::mat4 projection_matrix = glm::ortho(-1.0f, 1.0f, // L -> R || L < R
+                                            -1.0f, 1.0f, // B -> T || B < T
+                                            -2.0f, 2.0f); // Znear --> ZFar != 0  || Znear < ZFar
+    */
+    z = -1.0f;
+    glm::mat4 projection_matrix = glm::perspective(
+        glm::radians(60.f), // FOV in degrees
+        screenHeight / screenWidth, // Aspect Ratio
+        0.1f, // Z Near
+        100.f // Z Far
+    );
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -229,7 +256,7 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT);
 
         theta += mod_x;
-
+        z = z_mod;
         glm::mat4 transformation_matrix = glm::mat4(1.0f); // Creates your base identity matrix
 
         //Translation
@@ -245,6 +272,9 @@ int main(void)
             glm::radians(theta),
             glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
         
+        unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
         unsigned int transformationLoc = glGetUniformLocation(shaderProgram, "transform"); // transform is the variable from sample.vert
         glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
 
