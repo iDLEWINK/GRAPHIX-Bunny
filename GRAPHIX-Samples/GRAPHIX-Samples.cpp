@@ -16,7 +16,7 @@
 
 float mod_x = 0;
 float z_mod = -5.0f;
-
+float y_mod = 0.0f;
 void Key_Callback(GLFWwindow* window,
     int key, //KeyCode
     int scanCode, //ScanCode
@@ -33,11 +33,11 @@ void Key_Callback(GLFWwindow* window,
     }
 
     if (key == GLFW_KEY_S && action == GLFW_REPEAT) {
-        z_mod -= 0.1f;
+        y_mod -= 0.3f;
     }
 
     if (key == GLFW_KEY_W && action == GLFW_REPEAT) {
-        z_mod += 0.1f;
+        y_mod += 0.3f;
     }
 }
 
@@ -211,7 +211,7 @@ int main(void)
 
     //************************SCALE
     float scale_x, scale_y, scale_z;
-    scale_x = scale_y = scale_z = 3.0f; // 1 is neither scaled up or shrunked
+    scale_x = scale_y = scale_z = 5.0f; // 1 is neither scaled up or shrunked
 
     /*
     glm::mat4 scale = glm::scale(identity_matrix,
@@ -255,8 +255,45 @@ int main(void)
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
 
-        theta += mod_x;
+        theta = mod_x;
         z = z_mod;
+
+
+        /* Camera View Matrix */
+        glm::vec3 cameraPos = glm::vec3(0, 0, 10.f);
+        glm::mat4 cameraPosMatrix = glm::translate(glm::mat4(1.0f), cameraPos * -1.0f);
+
+        /* Necessary elements for the vectors */
+        glm::vec3 WorldUp = glm::vec3(0, 1.0f, 0);
+        glm::vec3 cameraCenter = glm::vec3(0, y_mod, 0);
+
+        /* Three camera vectors */
+        glm::vec3 F = cameraCenter - cameraPos;
+        F = glm::normalize(F);
+        glm::vec3 R = glm::cross(F, WorldUp); // Normalized already so we don't need to normalize anymore. But we can normalize to it again to make sure.
+        glm::vec3 U = glm::cross(R, F);
+
+        glm::mat4 cameraOrientationMatrix = glm::mat4(1.0f); // Double-sided array
+
+        // 1st COL Matrix
+        // 2nd ROW Matrix
+        // Matrix[col][row]
+        // NOTICE THAT IT'S THE OPPOSITE
+        cameraOrientationMatrix[0][0] = R.x;
+        cameraOrientationMatrix[1][0] = R.y;
+        cameraOrientationMatrix[2][0] = R.z;
+
+        cameraOrientationMatrix[0][1] = U.x;
+        cameraOrientationMatrix[1][1] = U.y;
+        cameraOrientationMatrix[2][1] = U.z;
+
+        cameraOrientationMatrix[0][2] = -F.x;
+        cameraOrientationMatrix[1][2] = -F.y;
+        cameraOrientationMatrix[2][2] = -F.z;
+      
+        glm::mat4 viewMatrix = cameraOrientationMatrix * cameraPosMatrix;
+        // glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraCenter, WorldUp); <----- VERY SHORT SHORTCUT
+
         glm::mat4 transformation_matrix = glm::mat4(1.0f); // Creates your base identity matrix
 
         //Translation
@@ -274,6 +311,9 @@ int main(void)
         
         unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
+        unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(viewMatrix));
 
         unsigned int transformationLoc = glGetUniformLocation(shaderProgram, "transform"); // transform is the variable from sample.vert
         glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
