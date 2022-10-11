@@ -14,6 +14,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 float mod_x = 0;
 float z_mod = -5.0f;
 float y_mod = 0.0f;
@@ -50,7 +53,7 @@ int main(void)
         return -1;
 
     float screenWidth = 640.f;
-    float screenHeight = 480.f;
+    float screenHeight = 640.f;
 
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(screenWidth, screenHeight, "Hello World", NULL, NULL);
@@ -66,7 +69,42 @@ int main(void)
     // Initialize GLAD - must always come AFTER glfwMakeContext
     gladLoadGL();
 
-    //glViewport(0, 0, screenWidth, screenHeight);
+    /* TEXTURES HERE */
+    stbi_set_flip_vertically_on_load(true); // For image flip; Loads it in an upright manner.    
+    int img_width, img_height, color_channels;
+    /* Loaded texture */
+    unsigned char* tex_bytes = stbi_load("3D/ayaya.png", // Texture path
+                                                &img_width, // Fill width
+                                                &img_height, // Fill height
+                                                &color_channels, // Number of color channels
+                                                0);
+
+    /* TEXTURE SETUP */
+    GLuint texture; // Create variable
+    glGenTextures(1, &texture); // Generate 1 texture and assign it to texture variable
+    glActiveTexture(GL_TEXTURE0); // Only one texture - but can have up to GL_TEXTURE60. You process succeeding textures individually if you have more than 1 on you wish to apply on an object
+                                  // Tell OpenGL we're modifying texture at index 0
+    glBindTexture(GL_TEXTURE_2D, texture); // Bind it for now
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
+        img_width,
+        img_height,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE, // Type of our loaded image
+        tex_bytes // loaded texture in bytes
+    );
+
+    /* Assign the loaded texture; Generate the mipmaps to the current texture */
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(tex_bytes); // Free from memory
+
+    glEnable(GL_DEPTH_TEST);
+
+    glViewport(0, 0, screenWidth, screenHeight);
 
     glfwSetKeyCallback(window, Key_Callback);
 
@@ -98,12 +136,24 @@ int main(void)
 
     glLinkProgram(shaderProgram);
 
-    std::string path = "3D/bunny.obj";
+    std::string path = "3D/myCube.obj";
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warning, error;
 
     tinyobj::attrib_t attributes;
+
+    /* 8 points in a cube, each point is its own UV */
+    GLfloat UV[]{
+        0.f, 1.f,
+        0.f, 0.f,
+        1.f, 1.f,
+        1.f, 0.f,
+        1.f, 1.f,
+        1.f, 0.f,
+        0.f, 1.f,
+        0.f, 0.f
+    };
 
     bool success = tinyobj::LoadObj(
         &attributes,
@@ -135,7 +185,7 @@ int main(void)
 
     /*Initialized VAO and VBO has an ID of unsigned integer - will be called by glGenVertexArrays*/
     /*EBO is now used*/
-    GLuint VAO, VBO, EBO;
+    GLuint VAO, VBO, EBO, VBO_UV;
 
     // Generate and assign ID to VAO
     glGenVertexArrays(1, &VAO);
@@ -143,7 +193,10 @@ int main(void)
     glGenBuffers(1, &VBO);
     // Generate and assign ID to EBO
     glGenBuffers(1, &EBO);
-    
+    // Generate and assign ID to VBO_UV
+    glGenBuffers(1, &VBO_UV);
+
+
     glUseProgram(shaderProgram);
 
     // Assigns or binds VAO - any calls after this will automatically point to VAO; Tells OpenGL we're working with that specified VAO
@@ -161,7 +214,7 @@ int main(void)
         GL_STATIC_DRAW //The position won't update therefore it's static
     );
 
-    // Tell OpenGL how to interpret that data
+    // Tell OpenGL how to interpret the array
     glVertexAttribPointer(
         0, // Position - SPECIAL INDEX 0, 1, and 2; See notes below in line 64
         3, // X, Y, Z
@@ -183,12 +236,34 @@ int main(void)
         GL_STATIC_DRAW
     );
 
+    /* We're currently working with texture */
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_UV);
+    glBufferData(GL_ARRAY_BUFFER,
+            sizeof(GL_FLOAT) * (sizeof(UV) / sizeof(UV[0])), // GL_FLOAT * length of the array
+            &UV[0],
+            GL_STATIC_DRAW
+        );
+
+    glVertexAttribPointer(
+        2, // Tex Coords or UVs are usually at index 2. Index 2 is just for convention btw we could use 1 or 5 or 6
+        2, // U and V
+        GL_FLOAT,
+        GL_FALSE,
+        2 * sizeof(GL_FLOAT),
+        (void*)0
+    );
+
+
+
     // Because we used 0 in the glVertexAttribPointer just above; Subject to change 0, 1, 2
     // SPECIAL INDICES
     // 0 is for the Position of the vertex
     // 1 is for the Normals
     // 2 is for the Textures
     glEnableVertexAttribArray(0);
+
+    /* Enable 2 for the texture or for our UV / Tex Coords*/
+    glEnableVertexAttribArray(2);
 
     // We're done modifying - bind it to 0
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -211,7 +286,7 @@ int main(void)
 
     //************************SCALE
     float scale_x, scale_y, scale_z;
-    scale_x = scale_y = scale_z = 5.0f; // 1 is neither scaled up or shrunked
+    scale_x = scale_y = scale_z = 2.0f; // 1 is neither scaled up or shrunked
 
     /*
     glm::mat4 scale = glm::scale(identity_matrix,
@@ -242,6 +317,7 @@ int main(void)
                                             -2.0f, 2.0f); // Znear --> ZFar != 0  || Znear < ZFar
     */
     z = -1.0f;
+    
     glm::mat4 projection_matrix = glm::perspective(
         glm::radians(60.f), // FOV in degrees
         screenHeight / screenWidth, // Aspect Ratio
@@ -253,11 +329,10 @@ int main(void)
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        theta = mod_x;
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);        
+        //theta = mod_x;
         z = z_mod;
-
+        theta += 0.25f;
 
         /* Camera View Matrix */
         glm::vec3 cameraPos = glm::vec3(0, 0, 10.f);
@@ -308,7 +383,17 @@ int main(void)
         transformation_matrix = glm::rotate(transformation_matrix,
             glm::radians(theta),
             glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
-        
+
+        /*
+        transformation_matrix = glm::rotate(transformation_matrix,
+            glm::radians(theta),
+            glm::normalize(glm::vec3(1.0f, 0.0f, rot_z)));        
+        */
+        /* DRAW THE TEXTURE */
+        GLuint tex0Address = glGetUniformLocation(shaderProgram, "tex0"); // Get the address
+        glBindTexture(GL_TEXTURE_2D, texture); // Call OpenGL we're using that texture
+        glUniform1i(tex0Address, 0); // Comes from GL_TEXTURE0
+
         unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
