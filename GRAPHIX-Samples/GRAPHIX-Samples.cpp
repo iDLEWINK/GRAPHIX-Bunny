@@ -73,7 +73,7 @@ int main(void)
     stbi_set_flip_vertically_on_load(true); // For image flip; Loads it in an upright manner.    
     int img_width, img_height, color_channels;
     /* Loaded texture */
-    unsigned char* tex_bytes = stbi_load("3D/peko.png", // Texture path
+    unsigned char* tex_bytes = stbi_load("3D/ayaya.png", // Texture path
                                                 &img_width, // Fill width
                                                 &img_height, // Fill height
                                                 &color_channels, // Number of color channels
@@ -136,7 +136,7 @@ int main(void)
 
     glLinkProgram(shaderProgram);
 
-    std::string path = "3D/myCube.obj";
+    std::string path = "3D/djSword.obj";
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warning, error;
@@ -174,8 +174,12 @@ int main(void)
     std::vector<GLfloat> fullVertexData;
     for (int i = 0; i < shapes[0].mesh.indices.size(); i++) {
         tinyobj::index_t vData = shapes[0].mesh.indices[i];
-
+        // XYZ
         int vertexIndex = vData.vertex_index * 3; // multiplied by 3 cause of x, y, z and get the base offset of vertex itself
+
+        // NORMAL XYZ
+        int normalIndex = vData.normal_index * 3; // multiplied by 3 cause of nx, ny, nz
+
         // UV
         int uvIndex = vData.texcoord_index * 2; // multiplied by 2 cause of u and v
 
@@ -188,10 +192,21 @@ int main(void)
         // Z
         fullVertexData.push_back(attributes.vertices[vertexIndex + 2]);
 
+
+        // NX
+        fullVertexData.push_back(attributes.normals[normalIndex]);
+
+        // NY
+        fullVertexData.push_back(attributes.normals[normalIndex + 1]);
+
+        // MZ
+        fullVertexData.push_back(attributes.normals[normalIndex + 2]);
+
+
         // U
         fullVertexData.push_back(attributes.texcoords[uvIndex]);
 
-        // U
+        // V
         fullVertexData.push_back(attributes.texcoords[uvIndex + 1]);
     }
 
@@ -248,17 +263,27 @@ int main(void)
         GL_FLOAT, // Type of ARRAY
         GL_FALSE, // Should we normalize this?
         //3 * sizeof(float), // How big the 3 points are in bytes? Size of Vertex data ; alternative sizeof(GL_FLOAT)
-        5 * sizeof(GL_FLOAT), // Changed from 3 to 5 since we now have X Y Z U V
+        8 * sizeof(GL_FLOAT), // Changed from 3 to 5 since we now have X Y Z FX FY FZ U V
         (void*)0
     );
 
-    GLintptr uvPtr = 3 * sizeof(GLfloat); // X Y Z offset in order to reach U V in the memory
+    GLintptr normPtr = 3 * sizeof(GLfloat); // X Y Z offset in order to reach NX NY NZ in the memory
+    glVertexAttribPointer(
+        1, // NORMAL is assigned to index 1
+        3, // NX, NY, NZ
+        GL_FLOAT,
+        GL_FALSE,
+        8 * sizeof(GL_FLOAT),
+        (void*)normPtr
+    );
+
+    GLintptr uvPtr = 6 * sizeof(GLfloat); // X Y Z NX NY NZ offset in order to reach U V in the memory
     glVertexAttribPointer(
         2, // UV assigned to index 2
         2,  // U and V
         GL_FLOAT,
         GL_FALSE,
-        5 * sizeof(GL_FLOAT),
+        8 * sizeof(GL_FLOAT),
         (void*)uvPtr
     );
 
@@ -302,6 +327,8 @@ int main(void)
     // 2 is for the Textures
     glEnableVertexAttribArray(0);
 
+    glEnableVertexAttribArray(1);
+
     /* Enable 2 for the texture or for our UV / Tex Coords*/
     glEnableVertexAttribArray(2);
 
@@ -326,7 +353,7 @@ int main(void)
 
     //************************SCALE
     float scale_x, scale_y, scale_z;
-    scale_x = scale_y = scale_z = 2.0f; // 1 is neither scaled up or shrunked
+    scale_x = scale_y = scale_z = 0.1f; // 1 is neither scaled up or shrunked
 
     /*
     glm::mat4 scale = glm::scale(identity_matrix,
@@ -424,11 +451,12 @@ int main(void)
             glm::radians(theta),
             glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
 
-        
+        /*
         transformation_matrix = glm::rotate(transformation_matrix,
             glm::radians(theta),
             glm::normalize(glm::vec3(1.0f, 0.0f, rot_z)));        
-        
+        */
+
         /* DRAW THE TEXTURE */
         GLuint tex0Address = glGetUniformLocation(shaderProgram, "tex0"); // Get the address
         glBindTexture(GL_TEXTURE_2D, texture); // Call OpenGL we're using that texture
@@ -468,7 +496,7 @@ int main(void)
 
         //glDrawElements(GL_TRIANGLES, sizeof(indices), GL_UNSIGNED_INT, 0);
         //glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 5); // divided by 5 to get the number of vertices to draw
+        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
 
 
         /*
