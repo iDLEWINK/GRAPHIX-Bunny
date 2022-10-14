@@ -73,7 +73,7 @@ int main(void)
     stbi_set_flip_vertically_on_load(true); // For image flip; Loads it in an upright manner.    
     int img_width, img_height, color_channels;
     /* Loaded texture */
-    unsigned char* tex_bytes = stbi_load("3D/ayaya.png", // Texture path
+    unsigned char* tex_bytes = stbi_load("3D/peko.png", // Texture path
                                                 &img_width, // Fill width
                                                 &img_height, // Fill height
                                                 &color_channels, // Number of color channels
@@ -171,6 +171,31 @@ int main(void)
         );
     }
 
+    std::vector<GLfloat> fullVertexData;
+    for (int i = 0; i < shapes[0].mesh.indices.size(); i++) {
+        tinyobj::index_t vData = shapes[0].mesh.indices[i];
+
+        int vertexIndex = vData.vertex_index * 3; // multiplied by 3 cause of x, y, z and get the base offset of vertex itself
+        // UV
+        int uvIndex = vData.texcoord_index * 2; // multiplied by 2 cause of u and v
+
+        // X
+        fullVertexData.push_back(attributes.vertices[vertexIndex]);
+
+        // Y
+        fullVertexData.push_back(attributes.vertices[vertexIndex + 1]);
+
+        // Z
+        fullVertexData.push_back(attributes.vertices[vertexIndex + 2]);
+
+        // U
+        fullVertexData.push_back(attributes.texcoords[uvIndex]);
+
+        // U
+        fullVertexData.push_back(attributes.texcoords[uvIndex + 1]);
+    }
+
+
     /* Declare the vertices (x, y, z)*/
     GLfloat vertices[]{
         0.f, 0.5f, 0.f,     // Vertex 0
@@ -185,17 +210,19 @@ int main(void)
 
     /*Initialized VAO and VBO has an ID of unsigned integer - will be called by glGenVertexArrays*/
     /*EBO is now used*/
-    GLuint VAO, VBO, EBO, VBO_UV;
+    GLuint VAO, VBO /*, EBO, VBO_UV */;
 
     // Generate and assign ID to VAO
     glGenVertexArrays(1, &VAO);
     // Generate and assign ID to VBO
     glGenBuffers(1, &VBO);
+
+    /*
     // Generate and assign ID to EBO
     glGenBuffers(1, &EBO);
     // Generate and assign ID to VBO_UV
     glGenBuffers(1, &VBO_UV);
-
+    */
 
     glUseProgram(shaderProgram);
 
@@ -208,24 +235,35 @@ int main(void)
         GL_ARRAY_BUFFER, // What data is in the buffer
         //sizeof(vertices), // Size of the whole buffer in bytes
         //sizeof(attributes.vertices) * attributes.vertices.size(), // alternative; sizeof(GL_FLOAT) * attributes.vertices.size()
-        sizeof(GL_FLOAT) * attributes.vertices.size(),
+        sizeof(GL_FLOAT) * fullVertexData.size(),
         //vertices, // Vertex Array        
-        &attributes.vertices[0],
+        fullVertexData.data(),
         GL_STATIC_DRAW //The position won't update therefore it's static
     );
 
     // Tell OpenGL how to interpret the array
     glVertexAttribPointer(
         0, // Position - SPECIAL INDEX 0, 1, and 2; See notes below in line 64
-        3, // X, Y, Z
+        3, // X, Y, Z ( this just points to the position so we can retain 3 even with U and V )
         GL_FLOAT, // Type of ARRAY
         GL_FALSE, // Should we normalize this?
         //3 * sizeof(float), // How big the 3 points are in bytes? Size of Vertex data ; alternative sizeof(GL_FLOAT)
-        3 * sizeof(GL_FLOAT),
+        5 * sizeof(GL_FLOAT), // Changed from 3 to 5 since we now have X Y Z U V
         (void*)0
     );
 
+    GLintptr uvPtr = 3 * sizeof(GLfloat); // X Y Z offset in order to reach U V in the memory
+    glVertexAttribPointer(
+        2, // UV assigned to index 2
+        2,  // U and V
+        GL_FLOAT,
+        GL_FALSE,
+        5 * sizeof(GL_FLOAT),
+        (void*)uvPtr
+    );
+
     // We tell OpenGL we are working with our EBO
+    /* DELETE EBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(
         GL_ELEMENT_ARRAY_BUFFER,
@@ -235,8 +273,10 @@ int main(void)
         mesh_indices.data(),
         GL_STATIC_DRAW
     );
-
+    */
     /* We're currently working with texture */
+
+    /* DELETE VBO UV
     glBindBuffer(GL_ARRAY_BUFFER, VBO_UV);
     glBufferData(GL_ARRAY_BUFFER,
             sizeof(GL_FLOAT) * (sizeof(UV) / sizeof(UV[0])), // GL_FLOAT * length of the array
@@ -252,7 +292,7 @@ int main(void)
         2 * sizeof(GL_FLOAT),
         (void*)0
     );
-
+    */
 
 
     // Because we used 0 in the glVertexAttribPointer just above; Subject to change 0, 1, 2
@@ -384,11 +424,11 @@ int main(void)
             glm::radians(theta),
             glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
 
-        /*
+        
         transformation_matrix = glm::rotate(transformation_matrix,
             glm::radians(theta),
             glm::normalize(glm::vec3(1.0f, 0.0f, rot_z)));        
-        */
+        
         /* DRAW THE TEXTURE */
         GLuint tex0Address = glGetUniformLocation(shaderProgram, "tex0"); // Get the address
         glBindTexture(GL_TEXTURE_2D, texture); // Call OpenGL we're using that texture
@@ -427,9 +467,12 @@ int main(void)
         /* glDrawArrays(GL_TRIANGLES, 0, 3); */
 
         //glDrawElements(GL_TRIANGLES, sizeof(indices), GL_UNSIGNED_INT, 0);
-        glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+        //glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 5); // divided by 5 to get the number of vertices to draw
 
-        /* Swap front and back buffers */
+
+        /*
+        Swap front and back buffers */
         glfwSwapBuffers(window);
 
         /* Poll for and process events */
@@ -439,7 +482,7 @@ int main(void)
     // Clean up
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
+    //glDeleteBuffers(1, &EBO);
 
     glfwTerminate();
     return 0;
