@@ -27,12 +27,12 @@ void Key_Callback(GLFWwindow* window,
     int mods // Modifier keys
 ) 
 {
-    if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-        mod_x += 0.1f;
+    if (key == GLFW_KEY_D && action == GLFW_REPEAT) {
+        mod_x += 3.0f;
     }
 
-    if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-        mod_x -= 0.1f;
+    if (key == GLFW_KEY_A && action == GLFW_REPEAT) {
+        mod_x -= 3.0f;
     }
 
     if (key == GLFW_KEY_S && action == GLFW_REPEAT) {
@@ -73,7 +73,7 @@ int main(void)
     stbi_set_flip_vertically_on_load(true); // For image flip; Loads it in an upright manner.    
     int img_width, img_height, color_channels;
     /* Loaded texture */
-    unsigned char* tex_bytes = stbi_load("3D/ayaya.png", // Texture path
+    unsigned char* tex_bytes = stbi_load("3D/partenza.jpg", // Texture path
                                                 &img_width, // Fill width
                                                 &img_height, // Fill height
                                                 &color_channels, // Number of color channels
@@ -89,11 +89,11 @@ int main(void)
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
-        GL_RGBA, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
+        GL_RGB, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
         img_width,
         img_height,
         0,
-        GL_RGBA,
+        GL_RGB,
         GL_UNSIGNED_BYTE, // Type of our loaded image
         tex_bytes // loaded texture in bytes
     );
@@ -326,9 +326,7 @@ int main(void)
     // 1 is for the Normals
     // 2 is for the Textures
     glEnableVertexAttribArray(0);
-
     glEnableVertexAttribArray(1);
-
     /* Enable 2 for the texture or for our UV / Tex Coords*/
     glEnableVertexAttribArray(2);
 
@@ -336,8 +334,6 @@ int main(void)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     // We're done modifying - bind it to 0
     glBindVertexArray(0); 
-    // We're done modifying - bind it to 0
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glm::mat4 identity_matrix = glm::mat4(1.0f); // 4x4 identity matrix
 
@@ -392,6 +388,16 @@ int main(void)
         100.f // Z Far
     );
 
+    /* LIGHTING */
+    glm::vec3 lightPos = glm::vec3(-10, 3, 0); // Front left xyz
+    glm::vec3 lightColor = glm::vec3(1, 0.8, 0.8); // RGB lighting
+
+    float ambientStr = 0.3f; // ambient intensity
+    glm::vec3 ambientColor = lightColor;
+
+    float specStr = 1.f;
+    float specPhong = 200.0f;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
@@ -400,6 +406,8 @@ int main(void)
         //theta = mod_x;
         z = z_mod;
         theta += 0.25f;
+
+        lightPos.x = mod_x;
 
         /* Camera View Matrix */
         glm::vec3 cameraPos = glm::vec3(0, 0, 10.f);
@@ -461,6 +469,25 @@ int main(void)
         GLuint tex0Address = glGetUniformLocation(shaderProgram, "tex0"); // Get the address
         glBindTexture(GL_TEXTURE_2D, texture); // Call OpenGL we're using that texture
         glUniform1i(tex0Address, 0); // Comes from GL_TEXTURE0
+
+        /* LIGHTING */
+        unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
+        glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
+
+        unsigned int lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+        glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
+
+        unsigned int ambientStrLoc = glGetUniformLocation(shaderProgram, "ambientStr");
+        glUniform1f(ambientStrLoc, ambientStr);
+        unsigned int ambientColorLoc = glGetUniformLocation(shaderProgram, "ambientColor");
+        glUniform3fv(ambientColorLoc, 1, glm::value_ptr(ambientColor));
+
+        unsigned int cameraPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
+        glUniform3fv(cameraPosLoc, 1, glm::value_ptr(cameraPos));
+        unsigned int specStrLoc = glGetUniformLocation(shaderProgram, "specStr");
+        glUniform1f(specStrLoc, specStr);
+        unsigned int specPhongLoc = glGetUniformLocation(shaderProgram, "specPhong");
+        glUniform1f(specPhongLoc, specPhong);
 
         unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
