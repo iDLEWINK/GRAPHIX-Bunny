@@ -18,6 +18,8 @@
 #include "stb_image.h"
 
 float mod_x = 0;
+float mod_y = 0;
+float mod_z = 0;
 float z_mod = -5.0f;
 float y_mod = 0.0f;
 void Key_Callback(GLFWwindow* window,
@@ -28,19 +30,27 @@ void Key_Callback(GLFWwindow* window,
 ) 
 {
     if (key == GLFW_KEY_D && action == GLFW_REPEAT) {
-        mod_x += 3.0f;
+        mod_x += 0.3f;
     }
 
     if (key == GLFW_KEY_A && action == GLFW_REPEAT) {
-        mod_x -= 3.0f;
+        mod_x -= 0.3f;
     }
 
     if (key == GLFW_KEY_S && action == GLFW_REPEAT) {
-        y_mod -= 0.3f;
+        mod_z -= 0.3f;
     }
 
     if (key == GLFW_KEY_W && action == GLFW_REPEAT) {
-        y_mod += 0.3f;
+        mod_z += 0.3f;
+    }
+
+    if (key == GLFW_KEY_UP && action == GLFW_REPEAT) {
+        mod_y += 0.3f;
+    }
+
+    if (key == GLFW_KEY_DOWN && action == GLFW_REPEAT) {
+        mod_y -= 0.3f;
     }
 }
 
@@ -116,7 +126,7 @@ int main(void)
     const char* v = vertString.c_str();
 
     //All of these are conversions for frag
-    std::fstream fragSrc("Shaders/sample.frag");
+    std::fstream fragSrc("Shaders/samplepoint.frag");
     std::stringstream fragBuff;
     fragBuff << fragSrc.rdbuf();
     std::string fragString = fragBuff.str();
@@ -389,14 +399,14 @@ int main(void)
     );
 
     /* LIGHTING */
-    glm::vec3 lightPos = glm::vec3(-10, 3, 0); // Front left xyz
-    glm::vec3 lightColor = glm::vec3(1, 0.8, 0.8); // RGB lighting
+    glm::vec3 lightPos = glm::vec3(0, 0, 0); // Front left xyz
+    glm::vec3 lightColor = glm::vec3(1, 1, 1); // RGB lighting
 
-    float ambientStr = 0.3f; // ambient intensity
+    float ambientStr = 0.5f; // ambient intensity
     glm::vec3 ambientColor = lightColor;
 
-    float specStr = 1.f;
-    float specPhong = 200.0f;
+    float specStr = 1.0f;
+    float specPhong = 16.0f;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -405,9 +415,11 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);        
         //theta = mod_x;
         z = z_mod;
-        theta += 0.25f;
+        //theta += 0.25f;
 
         lightPos.x = mod_x;
+        lightPos.y = mod_y;
+        lightPos.z = mod_z;
 
         /* Camera View Matrix */
         glm::vec3 cameraPos = glm::vec3(0, 0, 10.f);
@@ -415,13 +427,15 @@ int main(void)
 
         /* Necessary elements for the vectors */
         glm::vec3 WorldUp = glm::vec3(0, 1.0f, 0);
-        glm::vec3 cameraCenter = glm::vec3(0, y_mod, 0);
+        glm::vec3 cameraCenter = glm::vec3(0, 0, 0);
 
         /* Three camera vectors */
         glm::vec3 F = cameraCenter - cameraPos;
         F = glm::normalize(F);
         glm::vec3 R = glm::cross(F, WorldUp); // Normalized already so we don't need to normalize anymore. But we can normalize to it again to make sure.
+        R = glm::normalize(R);
         glm::vec3 U = glm::cross(R, F);
+        U = glm::normalize(U);
 
         glm::mat4 cameraOrientationMatrix = glm::mat4(1.0f); // Double-sided array
 
@@ -448,7 +462,7 @@ int main(void)
 
         //Translation
         transformation_matrix = glm::translate(transformation_matrix,
-            glm::vec3(x, y, z));
+            glm::vec3(0, 0, 0));
 
         //Multiply resulting matrix with scale matrix
         transformation_matrix = glm::scale(transformation_matrix,
@@ -523,9 +537,44 @@ int main(void)
 
         //glDrawElements(GL_TRIANGLES, sizeof(indices), GL_UNSIGNED_INT, 0);
         //glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
+        //Translation
+        transformation_matrix = glm::mat4(1.0f);
+        transformation_matrix = glm::translate(transformation_matrix,
+            glm::vec3(5, 0, -10));
+        transformation_matrix = glm::scale(transformation_matrix,
+            glm::vec3(scale_x, scale_y, scale_z));
+        //Multiply it with rotation matrix
+        transformation_matrix = glm::rotate(transformation_matrix,
+            glm::radians(theta),
+            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
+        glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
         glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
 
+        //Translation
+        transformation_matrix = glm::mat4(1.0f);
+        transformation_matrix = glm::translate(transformation_matrix,
+            glm::vec3(0, 0, -10));
+        transformation_matrix = glm::scale(transformation_matrix,
+            glm::vec3(scale_x, scale_y, scale_z));
+        //Multiply it with rotation matrix
+        transformation_matrix = glm::rotate(transformation_matrix,
+            glm::radians(theta),
+            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
+        glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
+        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
 
+        //Translation
+        transformation_matrix = glm::mat4(1.0f);
+        transformation_matrix = glm::translate(transformation_matrix,
+            glm::vec3(-5, 0, -10));
+        transformation_matrix = glm::scale(transformation_matrix,
+            glm::vec3(scale_x, scale_y, scale_z));
+        //Multiply it with rotation matrix
+        transformation_matrix = glm::rotate(transformation_matrix,
+            glm::radians(theta),
+            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
+        glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
+        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
         /*
         Swap front and back buffers */
         glfwSwapBuffers(window);

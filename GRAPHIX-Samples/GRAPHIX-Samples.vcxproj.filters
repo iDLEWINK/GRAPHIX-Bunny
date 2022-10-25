@@ -30,5 +30,6 @@
   <ItemGroup>
     <CopyFileToFolders Include="Shaders\sample.frag" />
     <CopyFileToFolders Include="Shaders\sample.vert" />
+    <CopyFileToFolders Include="Shaders\samplepoint.frag" />
   </ItemGroup>
 </Project>
