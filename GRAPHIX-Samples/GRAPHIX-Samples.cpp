@@ -126,7 +126,7 @@ int main(void)
     const char* v = vertString.c_str();
 
     //All of these are conversions for frag
-    std::fstream fragSrc("Shaders/samplepoint.frag");
+    std::fstream fragSrc("Shaders/sample.frag");
     std::stringstream fragBuff;
     fragBuff << fragSrc.rdbuf();
     std::string fragString = fragBuff.str();
@@ -145,6 +145,168 @@ int main(void)
     glAttachShader(shaderProgram, fragmentShader);
 
     glLinkProgram(shaderProgram);
+
+
+    //////////////////////////////////////////////////////////////////////////
+
+    //All of these are conversions for vert
+    std::fstream skybox_vertSrc("Shaders/skybox.vert");
+    std::stringstream skybox_vertBuff;
+    skybox_vertBuff << skybox_vertSrc.rdbuf();
+    std::string skybox_vertString = skybox_vertBuff.str();
+    const char* skybox_v = skybox_vertString.c_str();
+
+    //All of these are conversions for frag
+    std::fstream skybox_fragSrc("Shaders/skybox.frag");
+    std::stringstream skybox_fragBuff;
+    skybox_fragBuff << skybox_fragSrc.rdbuf();
+    std::string skybox_fragString = skybox_fragBuff.str();
+    const char* skybox_f = skybox_fragString.c_str();
+
+    GLuint skybox_vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(skybox_vertexShader, 1, &skybox_v, NULL);
+    glCompileShader(skybox_vertexShader);
+
+    GLuint skybox_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(skybox_fragmentShader, 1, &skybox_f, NULL);
+    glCompileShader(skybox_fragmentShader);
+
+    GLuint skybox_shaderProgram = glCreateProgram();
+    glAttachShader(skybox_shaderProgram, skybox_vertexShader);
+    glAttachShader(skybox_shaderProgram, skybox_fragmentShader);
+
+    glLinkProgram(skybox_shaderProgram);
+
+ /*
+      7--------6
+     /|       /|
+    4--------5 |
+    | |      | |
+    | 3------|-2
+    |/       |/
+    0--------1
+*/
+
+    //Vertices for the cube
+    float skyboxVertices[]{
+        -1.f, -1.f, 1.f, //0
+        1.f, -1.f, 1.f,  //1
+        1.f, -1.f, -1.f, //2
+        -1.f, -1.f, -1.f,//3
+        -1.f, 1.f, 1.f,  //4
+        1.f, 1.f, 1.f,   //5
+        1.f, 1.f, -1.f,  //6
+        -1.f, 1.f, -1.f  //7
+    };
+
+    //Skybox Indices
+    unsigned int skyboxIndices[]{
+        1,2,6,
+        6,5,1,
+
+        0,4,7,
+        7,3,0,
+
+        4,5,6,
+        6,7,4,
+
+        0,3,2,
+        2,1,0,
+
+        0,1,5,
+        5,4,0,
+
+        3,7,6,
+        6,2,3
+    };
+
+    unsigned int skyboxVAO, skyboxVBO, skyboxEBO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glGenBuffers(1, &skyboxEBO);
+
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER,
+        sizeof(skyboxVertices),
+        &skyboxVertices,
+        GL_STATIC_DRAW
+    );
+    glVertexAttribPointer(0,
+        3,
+        GL_FLOAT,
+        GL_FALSE,
+        3 * sizeof(GL_FLOAT),
+        (void*)0
+    );
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+        sizeof(GL_INT) * 36,
+        &skyboxIndices,
+        GL_STATIC_DRAW
+    );
+    glEnableVertexAttribArray(0);
+
+    std::string facesSkybox[]{
+        "Skybox/rainbow_rt.png",    // Right
+        "Skybox/rainbow_lf.png",    // Left
+        "Skybox/rainbow_up.png",    // Up
+        "Skybox/rainbow_dn.png",    // Down
+        "Skybox/rainbow_ft.png",    // Front
+        "Skybox/rainbow_bk.png"     // Back
+    };
+
+    unsigned int skyboxTex;
+
+    glGenTextures(1, &skyboxTex);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTex);
+
+    /* Avoid the skybox from pixelating when it's too big or small */
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    /* Prevents tiling; Makes sure texture is stretched to the edge */
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    /* Load the six texture images */
+    for (unsigned int i = 0; i < 6; i++) {
+        
+        int w, h, skyCChannel;
+        stbi_set_flip_vertically_on_load(false);
+
+        unsigned char* data = stbi_load(facesSkybox[i].c_str(),
+            &w,
+            &h,
+            &skyCChannel,
+            0);
+
+        if (data) {
+
+            /*
+                ALTERNATIVE
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X... NEGATIVE_X, ETC.  ETC. MANUAL LOADING
+            */
+
+            glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                0,
+                GL_RGB,
+                w,
+                h,
+                0,
+                GL_RGB,
+                GL_UNSIGNED_BYTE,
+                data
+            );
+        }
+
+        /* Clean up */
+        stbi_image_free(data);
+    }
+
+    stbi_set_flip_vertically_on_load(true);
 
     std::string path = "3D/djSword.obj";
     std::vector<tinyobj::shape_t> shapes;
@@ -457,6 +619,38 @@ int main(void)
       
         glm::mat4 viewMatrix = cameraOrientationMatrix * cameraPosMatrix;
         // glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraCenter, WorldUp); <----- VERY SHORT SHORTCUT
+
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        /* YOU NEED TO RENDER YOUR SKYBOX FIRST BEFORE YOU RENDER ALL THE OTHER 3D MODELS */
+        ////////////////////////////////////////////////////////////////////////////////////
+
+        glDepthMask(GL_FALSE);
+        glDepthFunc(GL_LEQUAL);
+
+        glUseProgram(skybox_shaderProgram);
+
+        glm::mat4 sky_view = glm::mat4(1.0f);
+        /* To remove the position of the camera */
+        /* Rotation camera for our skybox */
+        sky_view = glm::mat4(glm::mat3(viewMatrix));
+
+        unsigned int skybox_projectionLoc = glGetUniformLocation(skybox_shaderProgram, "projection");
+        glUniformMatrix4fv(skybox_projectionLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
+        unsigned int skybox_viewLoc = glGetUniformLocation(skybox_shaderProgram, "view");
+        glUniformMatrix4fv(skybox_viewLoc, 1, GL_FALSE, glm::value_ptr(sky_view));
+
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTex);
+
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+
+        glUseProgram(shaderProgram);
 
         glm::mat4 transformation_matrix = glm::mat4(1.0f); // Creates your base identity matrix
 
