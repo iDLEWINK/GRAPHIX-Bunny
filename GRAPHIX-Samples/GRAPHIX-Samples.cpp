@@ -17,9 +17,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+int fg = 0;
+int bg = 0;
+
 float mod_x = 0;
 float mod_y = 0;
-float mod_z = 0;
+float mod_z = 0.5;
 float z_mod = -5.0f;
 float y_mod = 0.0f;
 void Key_Callback(GLFWwindow* window,
@@ -39,19 +42,31 @@ void Key_Callback(GLFWwindow* window,
 
     if (key == GLFW_KEY_S && action == GLFW_REPEAT) {
         mod_z -= 0.3f;
+        std::cout << mod_z << '\n';
     }
 
     if (key == GLFW_KEY_W && action == GLFW_REPEAT) {
         mod_z += 0.3f;
+        std::cout << mod_z << '\n';
+    }
+    // FOREGROUND
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        fg = (fg + 1) % 19;
     }
 
-    if (key == GLFW_KEY_UP && action == GLFW_REPEAT) {
-        mod_y += 0.3f;
+    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+        fg = (fg - 1) % 19;
+    }
+    // BACKGROUND
+    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+        bg = (bg - 1) % 19;
     }
 
-    if (key == GLFW_KEY_DOWN && action == GLFW_REPEAT) {
-        mod_y -= 0.3f;
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+        bg = (bg + 1) % 19;
     }
+
+    std::cout << "foreground: " << fg << " background: " << bg << "\n";
 }
 
 int main(void)
@@ -66,7 +81,7 @@ int main(void)
     float screenHeight = 640.f;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(screenWidth, screenHeight, "Hello World", NULL, NULL);
+    window = glfwCreateWindow(screenWidth, screenHeight, "USON - Assignment 5 Blending", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -83,7 +98,7 @@ int main(void)
     stbi_set_flip_vertically_on_load(true); // For image flip; Loads it in an upright manner.    
     int img_width, img_height, color_channels;
     /* Loaded texture */
-    unsigned char* tex_bytes = stbi_load("3D/partenza.jpg", // Texture path
+    unsigned char* tex_bytes = stbi_load("3D/gradient.png", // Texture path
                                                 &img_width, // Fill width
                                                 &img_height, // Fill height
                                                 &color_channels, // Number of color channels
@@ -99,11 +114,11 @@ int main(void)
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
-        GL_RGB, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
+        GL_RGBA, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
         img_width,
         img_height,
         0,
-        GL_RGB,
+        GL_RGBA,
         GL_UNSIGNED_BYTE, // Type of our loaded image
         tex_bytes // loaded texture in bytes
     );
@@ -254,7 +269,7 @@ int main(void)
         "Skybox/rainbow_up.png",    // Up
         "Skybox/rainbow_dn.png",    // Down
         "Skybox/rainbow_ft.png",    // Front
-        "Skybox/rainbow_bk.png"     // Back
+        "Skybox/rainbow_ft.png"     // Back
     };
 
     unsigned int skyboxTex;
@@ -308,7 +323,7 @@ int main(void)
 
     stbi_set_flip_vertically_on_load(true);
 
-    std::string path = "3D/djSword.obj";
+    std::string path = "3D/plane.obj";
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warning, error;
@@ -521,7 +536,7 @@ int main(void)
 
     //************************SCALE
     float scale_x, scale_y, scale_z;
-    scale_x = scale_y = scale_z = 0.1f; // 1 is neither scaled up or shrunked
+    scale_x = scale_y = scale_z = 5.0f; // 1 is neither scaled up or shrunked
 
     /*
     glm::mat4 scale = glm::scale(identity_matrix,
@@ -532,8 +547,8 @@ int main(void)
     //*************************ROTATION
     float rot_x, rot_y, rot_z;
     rot_x = rot_y = rot_z = 0.0f; //But there should be at least 1 that's greater than 0. Not all should be 0.
-    rot_y = 1.0f;
-    float theta = 90.f; // Rotate the model by 90 degrees
+    rot_z = 1.0f;
+    float theta = -90.f; // Rotate the model by 90 degrees
 
     /*
     glm::mat4 rotation = glm::rotate(identity_matrix,
@@ -561,35 +576,179 @@ int main(void)
     );
 
     /* LIGHTING */
-    glm::vec3 lightPos = glm::vec3(0, 0, 0); // Front left xyz
+    glm::vec3 lightPos = glm::vec3(0, 15, -5); // Front left xyz
     glm::vec3 lightColor = glm::vec3(1, 1, 1); // RGB lighting
 
     float ambientStr = 0.5f; // ambient intensity
     glm::vec3 ambientColor = lightColor;
 
     float specStr = 1.0f;
-    float specPhong = 16.0f;
+    float specPhong = 10.0f;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);        
+
+
+        /*
+        // In while loop for different layers or something; for flexibility as opposed to constant outside the while render loop.
+        glEnable(GL_BLEND);
+        // Default blending function
+        glBlendFunc(GL_SRC_ALPHA,    // Foreground Cf (Af) + 
+            GL_ONE_MINUS_SRC_ALPHA); // Background Cb (1 - Af) = Final blended version 
+        glBlendEquation(GL_FUNC_SUBTRACT);
+        */
+
+        int fg_choice = 0;
+        int bg_choice = 0;
+
+        switch (fg) {
+            case 0:
+                fg_choice = GL_ZERO;
+                break;
+            case 1:
+                fg_choice = GL_ONE;
+                break;
+            case 2:
+                fg_choice = GL_SRC_COLOR;
+                break;
+            case 3:
+                fg_choice = GL_ONE_MINUS_SRC_COLOR;
+                break;
+            case 4:
+                fg_choice = GL_DST_COLOR;
+                break;
+            case 5:
+                fg_choice = GL_ONE_MINUS_DST_COLOR;
+                break;
+            case 6:
+                fg_choice = GL_SRC_ALPHA;
+                break;
+            case 7:
+                fg_choice = GL_ONE_MINUS_SRC_ALPHA;
+                break;
+            case 8:
+                fg_choice = GL_DST_ALPHA;
+                break;
+            case 9:
+                fg_choice = GL_ONE_MINUS_DST_ALPHA;
+                break;
+            case 10:
+                fg_choice = GL_CONSTANT_COLOR;
+                break;
+            case 11:
+                fg_choice = GL_ONE_MINUS_CONSTANT_COLOR;
+                break;
+            case 12:
+                fg_choice = GL_CONSTANT_ALPHA;
+                break;
+            case 13:
+                fg_choice = GL_ONE_MINUS_CONSTANT_ALPHA;
+                break;
+            case 14:
+                fg_choice = GL_SRC_ALPHA_SATURATE;
+                break;
+            case 15:
+                fg_choice = GL_SRC1_COLOR;
+                break;
+            case 16:
+                fg_choice = GL_ONE_MINUS_SRC1_COLOR;
+                break;
+            case 17:
+                fg_choice = GL_SRC1_ALPHA;
+                break;
+            case 18:
+                fg_choice = GL_ONE_MINUS_SRC1_ALPHA;
+                break;
+        }
+
+        switch (bg) {
+        case 0:
+            bg_choice = GL_ZERO;
+            break;
+        case 1:
+            bg_choice = GL_ONE;
+            break;
+        case 2:
+            bg_choice = GL_SRC_COLOR;
+            break;
+        case 3:
+            bg_choice = GL_ONE_MINUS_SRC_COLOR;
+            break;
+        case 4:
+            bg_choice = GL_DST_COLOR;
+            break;
+        case 5:
+            bg_choice = GL_ONE_MINUS_DST_COLOR;
+            break;
+        case 6:
+            bg_choice = GL_SRC_ALPHA;
+            break;
+        case 7:
+            bg_choice = GL_ONE_MINUS_SRC_ALPHA;
+            break;
+        case 8:
+            bg_choice = GL_DST_ALPHA;
+            break;
+        case 9:
+            bg_choice = GL_ONE_MINUS_DST_ALPHA;
+            break;
+        case 10:
+            bg_choice = GL_CONSTANT_COLOR;
+            break;
+        case 11:
+            bg_choice = GL_ONE_MINUS_CONSTANT_COLOR;
+            break;
+        case 12:
+            bg_choice = GL_CONSTANT_ALPHA;
+            break;
+        case 13:
+            bg_choice = GL_ONE_MINUS_CONSTANT_ALPHA;
+            break;
+        case 14:
+            bg_choice = GL_SRC_ALPHA_SATURATE;
+            break;
+        case 15:
+            bg_choice = GL_SRC1_COLOR;
+            break;
+        case 16:
+            bg_choice = GL_ONE_MINUS_SRC1_COLOR;
+            break;
+        case 17:
+            bg_choice = GL_SRC1_ALPHA;
+            break;
+        case 18:
+            bg_choice = GL_ONE_MINUS_SRC1_ALPHA;
+            break;
+        }
+
+
+
+        // Blend Function
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
+        glBlendEquation(GL_FUNC_SUBTRACT);
+
+
+        // GL_SRC_COLOR = (Cbr * Cfr, Cbg * Cfg, Cbb * Cfb, Cba * Cfa) = Final
+
         //theta = mod_x;
         z = z_mod;
         //theta += 0.25f;
 
-        lightPos.x = mod_x;
-        lightPos.y = mod_y;
-        lightPos.z = mod_z;
+        //lightPos.x = mod_x;
+        //lightPos.y = mod_y;
+        //lightPos.z = mod_z;
 
         /* Camera View Matrix */
-        glm::vec3 cameraPos = glm::vec3(0, 0, 10.f);
+        glm::vec3 cameraPos = glm::vec3(0, 0, mod_z);
         glm::mat4 cameraPosMatrix = glm::translate(glm::mat4(1.0f), cameraPos * -1.0f);
 
         /* Necessary elements for the vectors */
         glm::vec3 WorldUp = glm::vec3(0, 1.0f, 0);
-        glm::vec3 cameraCenter = glm::vec3(0, 0, 0);
+        glm::vec3 cameraCenter = glm::vec3(mod_x, 0, 0);
 
         /* Three camera vectors */
         glm::vec3 F = cameraCenter - cameraPos;
@@ -619,7 +778,6 @@ int main(void)
       
         glm::mat4 viewMatrix = cameraOrientationMatrix * cameraPosMatrix;
         // glm::mat4 viewMatrix = glm::lookAt(cameraPos, cameraCenter, WorldUp); <----- VERY SHORT SHORTCUT
-
 
         ////////////////////////////////////////////////////////////////////////////////////
         /* YOU NEED TO RENDER YOUR SKYBOX FIRST BEFORE YOU RENDER ALL THE OTHER 3D MODELS */
@@ -658,14 +816,17 @@ int main(void)
         transformation_matrix = glm::translate(transformation_matrix,
             glm::vec3(0, 0, 0));
 
+
         //Multiply resulting matrix with scale matrix
         transformation_matrix = glm::scale(transformation_matrix,
             glm::vec3(scale_x, scale_y, scale_z));
 
+        //theta = theta >= 360 ? 0 : (theta + 1);
+
         //Multiply it with rotation matrix
         transformation_matrix = glm::rotate(transformation_matrix,
             glm::radians(theta),
-            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
+            glm::normalize(glm::vec3(0, 1, 0)));
 
         /*
         transformation_matrix = glm::rotate(transformation_matrix,
@@ -726,24 +887,6 @@ int main(void)
       
         glBindVertexArray(VAO);
 
-        // We don't need this anymore
-        /* glDrawArrays(GL_TRIANGLES, 0, 3); */
-
-        //glDrawElements(GL_TRIANGLES, sizeof(indices), GL_UNSIGNED_INT, 0);
-        //glDrawElements(GL_TRIANGLES, mesh_indices.size(), GL_UNSIGNED_INT, 0);
-        //Translation
-        transformation_matrix = glm::mat4(1.0f);
-        transformation_matrix = glm::translate(transformation_matrix,
-            glm::vec3(5, 0, -10));
-        transformation_matrix = glm::scale(transformation_matrix,
-            glm::vec3(scale_x, scale_y, scale_z));
-        //Multiply it with rotation matrix
-        transformation_matrix = glm::rotate(transformation_matrix,
-            glm::radians(theta),
-            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
-        glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
-        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
-
         //Translation
         transformation_matrix = glm::mat4(1.0f);
         transformation_matrix = glm::translate(transformation_matrix,
@@ -757,22 +900,9 @@ int main(void)
         glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
         glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
 
-        //Translation
-        transformation_matrix = glm::mat4(1.0f);
-        transformation_matrix = glm::translate(transformation_matrix,
-            glm::vec3(-5, 0, -10));
-        transformation_matrix = glm::scale(transformation_matrix,
-            glm::vec3(scale_x, scale_y, scale_z));
-        //Multiply it with rotation matrix
-        transformation_matrix = glm::rotate(transformation_matrix,
-            glm::radians(theta),
-            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
-        glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
-        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
-        /*
-        Swap front and back buffers */
-        glfwSwapBuffers(window);
 
+        /* Swap frontand back buffers */
+        glfwSwapBuffers(window);
         /* Poll for and process events */
         glfwPollEvents();
     }
