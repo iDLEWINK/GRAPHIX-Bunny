@@ -576,7 +576,7 @@ int main(void)
     );
 
     /* LIGHTING */
-    glm::vec3 lightPos = glm::vec3(0, 15, -5); // Front left xyz
+    glm::vec3 lightPos = glm::vec3(0, 1000, -5); // Front left xyz
     glm::vec3 lightColor = glm::vec3(1, 1, 1); // RGB lighting
 
     float ambientStr = 0.5f; // ambient intensity
@@ -728,7 +728,7 @@ int main(void)
 
         // Blend Function
         glEnable(GL_BLEND);
-        glBlendFunc(GL_ONE_MINUS_SRC_ALPHA, GL_ONE_MINUS_SRC_COLOR);
+        glBlendFunc(GL_ONE, GL_SRC_ALPHA);
         glBlendEquation(GL_FUNC_SUBTRACT);
 
 
