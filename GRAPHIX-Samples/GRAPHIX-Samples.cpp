@@ -21,8 +21,8 @@ int fg = 0;
 int bg = 0;
 
 float mod_x = 0;
-float mod_y = 0;
-float mod_z = 0.5;
+float mod_y = 3.0f;
+float mod_z = -7.0f;
 float z_mod = -5.0f;
 float y_mod = 0.0f;
 void Key_Callback(GLFWwindow* window,
@@ -81,7 +81,7 @@ int main(void)
     float screenHeight = 640.f;
 
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(screenWidth, screenHeight, "USON - Assignment 5 Blending", NULL, NULL);
+    window = glfwCreateWindow(screenWidth, screenHeight, "Sample Playground", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -98,7 +98,7 @@ int main(void)
     stbi_set_flip_vertically_on_load(true); // For image flip; Loads it in an upright manner.    
     int img_width, img_height, color_channels;
     /* Loaded texture */
-    unsigned char* tex_bytes = stbi_load("3D/gradient.png", // Texture path
+    unsigned char* tex_bytes = stbi_load("3D/brickwall.jpg", // Texture path
                                                 &img_width, // Fill width
                                                 &img_height, // Fill height
                                                 &color_channels, // Number of color channels
@@ -114,11 +114,11 @@ int main(void)
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
-        GL_RGBA, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
+        GL_RGB, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
         img_width,
         img_height,
         0,
-        GL_RGBA,
+        GL_RGB,
         GL_UNSIGNED_BYTE, // Type of our loaded image
         tex_bytes // loaded texture in bytes
     );
@@ -126,6 +126,51 @@ int main(void)
     /* Assign the loaded texture; Generate the mipmaps to the current texture */
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(tex_bytes); // Free from memory
+
+
+    ////////////////////////COPY///////////////////////////
+    // 
+    // 
+    //int img_width, img_height, color_channels;
+
+    /* Loaded texture */
+    unsigned char* norm_bytes = stbi_load("3D/brickwall_normal.jpg", // Texture path
+        &img_width, // Fill width
+        &img_height, // Fill height
+        &color_channels, // Number of color channels
+        0);
+
+    /* TEXTURE SETUP */
+    GLuint norm_tex; // Create variable
+    glGenTextures(1, &norm_tex); // Generate 1 texture and assign it to texture variable
+    // WE INCREMENT TO GL_TEXTURE1
+    glActiveTexture(GL_TEXTURE1); // Only one texture - but can have up to GL_TEXTURE60. You process succeeding textures individually if you have more than 1 on you wish to apply on an object
+    // Tell OpenGL we're modifying texture at index 0
+    glBindTexture(GL_TEXTURE_2D, norm_tex); // Bind it for now
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB, //GL_RGB = jpegs or pngs w/o alphas; GL_RGBA = pngs or images w/ alpha; some pngs does not have an alpha channel
+        img_width,
+        img_height,
+        0,
+        GL_RGB,
+        GL_UNSIGNED_BYTE, // Type of our loaded image
+        norm_bytes // loaded texture in bytes
+    );
+
+    /* Assign the loaded texture; Generate the mipmaps to the current texture */
+    glGenerateMipmap(GL_TEXTURE_2D);
+    stbi_image_free(norm_bytes); // Free from memory
+
+
+
+
+
+
+
+
 
     glEnable(GL_DEPTH_TEST);
 
@@ -358,6 +403,71 @@ int main(void)
         );
     }
 
+    //////////////////////////MATRIX COMPUTATION FOR ADAPTING LIGHT///////////////////////////
+    std::vector<glm::vec3> tangents;
+    std::vector<glm::vec3> bitangents;
+
+    /// should be divisible by 3 since we have triangles as basic unit
+    for (int i = 0; i < shapes[0].mesh.indices.size(); i += 3) {
+        tinyobj::index_t vData1 = shapes[0].mesh.indices[i];
+        tinyobj::index_t vData2 = shapes[0].mesh.indices[i+1];
+        tinyobj::index_t vData3 = shapes[0].mesh.indices[i+2];
+
+        // V INDEX
+        glm::vec3 v1 = glm::vec3(
+            attributes.vertices[vData1.vertex_index * 3],
+            attributes.vertices[vData1.vertex_index * 3 + 1],
+            attributes.vertices[vData1.vertex_index * 3 + 2]
+        );
+
+        glm::vec3 v2 = glm::vec3(
+            attributes.vertices[vData2.vertex_index * 3],
+            attributes.vertices[vData2.vertex_index * 3 + 1],
+            attributes.vertices[vData2.vertex_index * 3 + 2]
+        );
+
+        glm::vec3 v3 = glm::vec3(
+            attributes.vertices[vData3.vertex_index * 3],
+            attributes.vertices[vData3.vertex_index * 3 + 1],
+            attributes.vertices[vData3.vertex_index * 3 + 2]
+        );
+
+        // UV COMPONENTS
+        glm::vec2 uv1 = glm::vec2(
+            attributes.texcoords[vData1.texcoord_index * 2],
+            attributes.texcoords[vData1.texcoord_index * 2 + 1]
+        );
+
+        glm::vec2 uv2 = glm::vec2(
+            attributes.texcoords[vData2.texcoord_index * 2],
+            attributes.texcoords[vData2.texcoord_index * 2 + 1]
+        );
+
+        glm::vec2 uv3 = glm::vec2(
+            attributes.texcoords[vData3.texcoord_index * 2],
+            attributes.texcoords[vData3.texcoord_index * 2 + 1]
+        );
+
+        glm::vec3 deltaPos1 = v2 - v1;
+        glm::vec3 deltaPos2 = v3 - v1;
+
+        glm::vec2 deltaUV1 = uv2 - uv1;
+        glm::vec2 deltaUV2 = uv3 - uv1;
+
+        float r = 1.0f / ((deltaUV1.x * deltaUV2.y) - (deltaUV1.y * deltaUV2.x));
+
+        glm::vec3 tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+        glm::vec3 bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+
+        tangents.push_back(tangent);
+        tangents.push_back(tangent);
+        tangents.push_back(tangent);
+
+        bitangents.push_back(bitangent);
+        bitangents.push_back(bitangent);
+        bitangents.push_back(bitangent);
+    }
+
     std::vector<GLfloat> fullVertexData;
     for (int i = 0; i < shapes[0].mesh.indices.size(); i++) {
         tinyobj::index_t vData = shapes[0].mesh.indices[i];
@@ -395,6 +505,30 @@ int main(void)
 
         // V
         fullVertexData.push_back(attributes.texcoords[uvIndex + 1]);
+
+        fullVertexData.push_back(
+            tangents[i].x
+        );
+
+        fullVertexData.push_back(
+            tangents[i].y
+        );
+
+        fullVertexData.push_back(
+            tangents[i].z
+        );
+
+        fullVertexData.push_back(
+            bitangents[i].x
+        );
+        
+        fullVertexData.push_back(
+            bitangents[i].y
+        );
+
+        fullVertexData.push_back(
+            bitangents[i].z
+        );
     }
 
 
@@ -450,7 +584,7 @@ int main(void)
         GL_FLOAT, // Type of ARRAY
         GL_FALSE, // Should we normalize this?
         //3 * sizeof(float), // How big the 3 points are in bytes? Size of Vertex data ; alternative sizeof(GL_FLOAT)
-        8 * sizeof(GL_FLOAT), // Changed from 3 to 5 since we now have X Y Z FX FY FZ U V
+        14 * sizeof(GL_FLOAT), // Changed from 3 to 5 since we now have X Y Z FX FY FZ U V //  -------------------- CHANGE TO 14 WE ADDED 6 NEW ELEMENTS
         (void*)0
     );
 
@@ -460,7 +594,7 @@ int main(void)
         3, // NX, NY, NZ
         GL_FLOAT,
         GL_FALSE,
-        8 * sizeof(GL_FLOAT),
+        14 * sizeof(GL_FLOAT),
         (void*)normPtr
     );
 
@@ -470,8 +604,30 @@ int main(void)
         2,  // U and V
         GL_FLOAT,
         GL_FALSE,
-        8 * sizeof(GL_FLOAT),
+        14 * sizeof(GL_FLOAT),
         (void*)uvPtr
+    );
+
+    // Starts at index 8 
+    GLintptr tangentPtr = 8 * sizeof(float);
+    GLintptr bitangentPtr = 11 * sizeof(float);
+
+    glVertexAttribPointer(
+        3, // Index 3
+        3, // Size of 3
+        GL_FLOAT,
+        GL_FALSE,
+        14 * sizeof(GL_FLOAT),
+        (void*)tangentPtr
+    );
+
+    glVertexAttribPointer(
+        4, // Index 4
+        3, // Size of 3
+        GL_FLOAT,
+        GL_FALSE,
+        14 * sizeof(GL_FLOAT),
+        (void*)bitangentPtr
     );
 
     // We tell OpenGL we are working with our EBO
@@ -516,6 +672,10 @@ int main(void)
     glEnableVertexAttribArray(1);
     /* Enable 2 for the texture or for our UV / Tex Coords*/
     glEnableVertexAttribArray(2);
+
+    /* NEW ADDITIONS */
+    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(4);
 
     // We're done modifying - bind it to 0
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -576,14 +736,14 @@ int main(void)
     );
 
     /* LIGHTING */
-    glm::vec3 lightPos = glm::vec3(0, 1000, -5); // Front left xyz
+    glm::vec3 lightPos = glm::vec3(0, 5, -7); // Front left xyz
     glm::vec3 lightColor = glm::vec3(1, 1, 1); // RGB lighting
 
-    float ambientStr = 0.5f; // ambient intensity
+    float ambientStr = 0.05f; // ambient intensity
     glm::vec3 ambientColor = lightColor;
 
     float specStr = 1.0f;
-    float specPhong = 10.0f;
+    float specPhong = 16.0f;
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
@@ -727,10 +887,11 @@ int main(void)
 
 
         // Blend Function
+        /*
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_SRC_ALPHA);
         glBlendEquation(GL_FUNC_SUBTRACT);
-
+        */
 
         // GL_SRC_COLOR = (Cbr * Cfr, Cbg * Cfg, Cbb * Cfb, Cba * Cfa) = Final
 
@@ -738,17 +899,17 @@ int main(void)
         z = z_mod;
         //theta += 0.25f;
 
-        //lightPos.x = mod_x;
-        //lightPos.y = mod_y;
-        //lightPos.z = mod_z;
+        lightPos.x = mod_x;
+        lightPos.y = mod_y;
+        lightPos.z = mod_z;
 
         /* Camera View Matrix */
-        glm::vec3 cameraPos = glm::vec3(0, 0, mod_z);
+        glm::vec3 cameraPos = glm::vec3(0, 0, 10);
         glm::mat4 cameraPosMatrix = glm::translate(glm::mat4(1.0f), cameraPos * -1.0f);
 
         /* Necessary elements for the vectors */
         glm::vec3 WorldUp = glm::vec3(0, 1.0f, 0);
-        glm::vec3 cameraCenter = glm::vec3(mod_x, 0, 0);
+        glm::vec3 cameraCenter = glm::vec3(0, 0, 0);
 
         /* Three camera vectors */
         glm::vec3 F = cameraCenter - cameraPos;
@@ -835,9 +996,17 @@ int main(void)
         */
 
         /* DRAW THE TEXTURE */
+        // Explicitly state that it's GL_TEXTURE0 (Since we're fiddling with multiple textures now)
+        glActiveTexture(GL_TEXTURE0);
         GLuint tex0Address = glGetUniformLocation(shaderProgram, "tex0"); // Get the address
         glBindTexture(GL_TEXTURE_2D, texture); // Call OpenGL we're using that texture
         glUniform1i(tex0Address, 0); // Comes from GL_TEXTURE0
+
+        /* THE NORMAL MAPPING TEXTURE */
+        glActiveTexture(GL_TEXTURE1);
+        GLuint tex1Address = glGetUniformLocation(shaderProgram, "norm_tex"); // Get the address
+        glBindTexture(GL_TEXTURE_2D, norm_tex); // Call OpenGL we're using that texture
+        glUniform1i(tex1Address, 1); // Comes from GL_TEXTURE1
 
         /* LIGHTING */
         unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
@@ -894,11 +1063,12 @@ int main(void)
         transformation_matrix = glm::scale(transformation_matrix,
             glm::vec3(scale_x, scale_y, scale_z));
         //Multiply it with rotation matrix
+        theta += 1.0f;
         transformation_matrix = glm::rotate(transformation_matrix,
             glm::radians(theta),
-            glm::normalize(glm::vec3(rot_x, rot_y, rot_z)));
+            glm::normalize(glm::vec3(1.0f, 0, 0)));
         glUniformMatrix4fv(transformationLoc, 1, GL_FALSE, glm::value_ptr(transformation_matrix));
-        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 8); // divided by 8 to get the number of vertices to draw
+        glDrawArrays(GL_TRIANGLES, 0, fullVertexData.size() / 14); // divided by 8 to get the number of vertices to draw
 
 
         /* Swap frontand back buffers */

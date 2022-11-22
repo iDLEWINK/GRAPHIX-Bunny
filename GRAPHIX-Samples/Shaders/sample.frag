@@ -1,6 +1,7 @@
 #version 330 core //shader version
 
 uniform sampler2D tex0;
+uniform sampler2D norm_tex;
 
 uniform vec3 lightPos; // light source
 uniform vec3 lightColor;
@@ -16,6 +17,8 @@ in vec2 texCoord; // Receive the output variable for textures in sample.vert
 in vec3 normCoord;
 in vec3 fragPos;
 
+in mat3 TBN;
+
 out vec4 FragColor;
 
 
@@ -29,7 +32,19 @@ void main(){
 		discard; // akin to that of return or break; everything below is ignored
 	}
 
-	vec3 normal = normalize(normCoord);
+	// vec3 normal = normalize(normCoord);
+
+	/*	Get RGB Data of the texture	*/
+	vec3 normal = texture(norm_tex, texCoord).rgb; // Normal for Normal Mapping
+	/*
+		Converts RGB -> XYZ
+		0 == -1
+		1 == 1		
+	*/
+	normal = normalize(normal * 2.0 - 1.0);
+	// TBN matrix
+	normal = normalize(TBN * normal);
+
 	vec3 lightDir = normalize(lightPos - fragPos); // Direction from the light source to your fragment source
 
 	/* DIFFUSE */
